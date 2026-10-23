@@ -324,6 +324,7 @@ absl::Status SpiffeBundle::CreateX509Stack() {
   // If there was an error parsing we don't want a partially filled root stack.
   if (!status.ok()) {
     sk_X509_pop_free(*root_stack_, X509_free);
+    root_stack_.reset();
   }
   return status;
 }
