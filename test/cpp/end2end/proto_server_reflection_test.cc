@@ -220,6 +220,36 @@ TEST_F(ProtoServerReflectionTest, V1ApiInstalled) {
       << response.DebugString();
 }
 
+TEST_F(ProtoServerReflectionTest, ResponseNotReusedAcrossStreamRequests) {
+  SKIP_TEST_FOR_PH2_CLIENT(
+      "Raw reflection stream leak under PH2 client; see V1ApiInstalled");
+  ResetStub();
+  using Service = reflection::v1::ServerReflection;
+  using Request = reflection::v1::ServerReflectionRequest;
+  using Response = reflection::v1::ServerReflectionResponse;
+  Service::Stub stub(channel_);
+  ClientContext context;
+  auto reader_writer = stub.ServerReflectionInfo(&context);
+
+  Request request;
+  request.set_list_services("*");
+  reader_writer->Write(request);
+  Response response1;
+  ASSERT_TRUE(reader_writer->Read(&response1));
+  const int first_count = response1.list_services_response().service_size();
+  ASSERT_GT(first_count, 0);
+
+  // A second request on the same stream must get a fresh response. If the
+  // server reused the response message the listed services would accumulate
+  // and this count would grow.
+  request = Request::default_instance();
+  request.set_list_services("*");
+  reader_writer->WriteLast(request, WriteOptions());
+  Response response2;
+  ASSERT_TRUE(reader_writer->Read(&response2));
+  EXPECT_EQ(response2.list_services_response().service_size(), first_count);
+}
+
 }  // namespace testing
 }  // namespace grpc
 

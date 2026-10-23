@@ -36,9 +36,9 @@ template <typename Request, typename Response>
 Status ProtoServerReflectionBackend::ServerReflectionInfo(
     ServerReaderWriter<Response, Request>* stream) const {
   Request request;
-  Response response;
   Status status;
   while (stream->Read(&request)) {
+    Response response;
     switch (request.message_request_case()) {
       case Request::MessageRequestCase::kFileByFilename:
         status = GetFileByName(request.file_by_filename(), &response);
